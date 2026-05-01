@@ -1,6 +1,6 @@
-# BF6 DMA Cheat — Attack PC Software
+# DMA Testing -- Need Offset Dump
 
-> Read-only DMA cheat for Battlefield 6.
+> Read-only DMA
 > Aimbot · ESP · Anti-Recoil · Hotkeys · Web Menu · Cloud Configs.
 
 ---
