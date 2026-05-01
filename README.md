@@ -5,7 +5,7 @@
 
 ---
 
-## ⚠️ Read This First
+## Read This First
 
 **This is a hardware-DMA research/education project. It is not a one-click "download and play" cheat.**
 Before you go any further, make sure you understand all of the following:
