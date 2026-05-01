@@ -5,17 +5,17 @@
 
 ---
 
-## Read This First
+## Read This First -- This is for educational purposes only
 
 **This is a hardware-DMA research/education project. It is not a one-click "download and play" cheat.**
 Before you go any further, make sure you understand all of the following:
 
 | | |
 |---|---|
-| **Anti-cheat risk is real** | Javelin (BF6's anti-cheat) can and does ban accounts that trigger heuristics. **Use a throwaway account and isolated hardware** until *you* have validated your full pipeline end-to-end. The maintainers take zero responsibility for your bans. |
+| **Anti-cheat risk is real** | Anticheat can and does ban accounts that trigger heuristics. **Use a throwaway account and isolated hardware** until *you* have validated your full pipeline end-to-end. The maintainers take zero responsibility for your bans. |
 | **Hardware is mandatory** | You need a second PC ("attack PC"), a DMA FPGA card (Screamer / 35T / 75T or similar) with **clean anti-fingerprint firmware**, and a separate **USB HID injector** (KMBox Net / B+ recommended; Arduino / Teensy / MAKCU / Ferrum also work). There is **no software-only path**. None. |
 | **Steep learning curve** | You should already be comfortable with: DMA cheating fundamentals, PCIe FPGAs, IOMMU/VT-d, basic Frostbite memory layouts, Win32 virtual-key codes, and IDA-style signature scanning. If any of these is new, learn them on an offline / non-AC target first. |
-| **Game patches break offsets** | Every BF6 update may shift static VAs and struct layouts. The project ships a 3-tier offset resolver and a `--discover` mode, but expect to reverse fresh sigs every so often. |
+| **Game patches break offsets** | Every game update may shift static VAs and struct layouts. The project ships a 3-tier offset resolver and a `--discover` mode, but expect to reverse fresh sigs every so often. |
 | **BIOS prep is required** | Disable **VT-d / IOMMU** on the *gaming* PC. With it on, DMA reads return zeros or `0xFFFFFFFF`. |
 | **Read-only by design** | This codebase has **zero write paths** into the game process. No DLL injection, no kernel driver, no hooks, no `WriteProcessMemory`. Output goes through a separate USB HID device the gaming PC sees as a normal mouse. Don't fork to add writes — the moment you do, the AC detection surface explodes. |
 | **For personal research use** | Don't use this to grief, sell carries, or run smurf farms. Don't redistribute compiled binaries. |
@@ -46,7 +46,7 @@ Before you go any further, make sure you understand all of the following:
 ## Architecture
 
 ```
-[Gaming PC running BF6] ←──PCIe DMA──→ [Attack PC running this software]
+[Gaming PC running game] ←──PCIe DMA──→ [Attack PC running this software]
                                               │
                                       KMBox / Arduino / etc.
                                        (USB HID input device)
@@ -65,7 +65,7 @@ DMA reads only. Output is via a separate USB HID device that the gaming PC sees 
 
 | Item | Notes |
 |---|---|
-| **2× Win10/11 PCs** | Gaming PC (runs BF6) + Attack PC (runs this software) |
+| **2× Win10/11 PCs** | Gaming PC (runs game) + Attack PC (runs this software) |
 | **DMA FPGA card** | Screamer, 35T, 75T or similar, with clean anti-fingerprint firmware. EA AC's CR3 cloning is handled automatically (see `dma/dma_handler.cpp`). |
 | **HID input device** | **KMBox Net / B+** (recommended — also enables hotkey input monitoring), *or* Arduino / Teensy / MAKCU / Ferrum |
 | *(optional)* Fuser | Mirrors the ESP overlay onto the gaming PC's monitor |
