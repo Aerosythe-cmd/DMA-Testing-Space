@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BF6 DMA — Control Panel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Header / status bar ── -->
+  <header>
+    <div class="logo">BF6 <span class="accent">DMA</span></div>
+    <div class="status-bar">
+      <span class="status-pill" id="statusConn" data-state="offline">
+        <span class="dot"></span>OFFLINE
+      </span>
+      <span class="status-pill" id="statusMatch" data-state="idle">
+        <span class="dot"></span>IDLE
+      </span>
+    </div>
+  </header>
+
+  <!-- ── Tabs ── -->
+  <nav class="tabs">
+    <button class="tab active" data-tab="aimbot">Aimbot</button>
+    <button class="tab" data-tab="esp">ESP</button>
+    <button class="tab" data-tab="antirecoil">Recoil</button>
+    <button class="tab" data-tab="misc">Misc</button>
+    <button class="tab" data-tab="configs">Configs</button>
+    <button class="tab" data-tab="players">Players</button>
+    <button class="tab" data-tab="tests">Tests</button>
+  </nav>
+
+  <!-- ── Aimbot Tab ── -->
+  <section class="tab-content active" id="tab-aimbot">
+
+    <div class="hero">
+      <div class="hero-text">
+        <div class="hero-title">Aimbot</div>
+        <div class="hero-sub" id="hero-aimbot-sub">Off</div>
+      </div>
+      <input type="checkbox" id="aimbotEnabled" class="toggle toggle-lg">
+    </div>
+
+    <div class="subgroup" data-master="aimbotEnabled">
+      <h3 class="section-title">Hotkey</h3>
+      <div class="group">
+        <div class="row">
+          <label for="aimbotHotkeyMode">Mode</label>
+          <select id="aimbotHotkeyMode">
+            <option value="0">Off (always-on)</option>
+            <option value="1">Hold</option>
+            <option value="2">Toggle</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Bind</label>
+          <button class="btn hotkey-bind" data-feature="aimbot"
+                  data-vk-field="aimbotHotkey">
+            <span class="hotkey-label">—</span>
+          </button>
+        </div>
+        <input type="hidden" id="aimbotHotkey">
+        <div class="hint">
+          Hold-mode default is right-mouse. In a 2-PC DMA setup the kmbox passthrough
+          captures the game-PC keyboard; otherwise local Win32 input is used.
+        </div>
+      </div>
+
+      <h3 class="section-title">Targeting</h3>
+      <div class="group">
+        <div class="row">
+          <label for="aimFov">FOV radius</label>
+          <div class="ctl">
+            <input type="range" id="aimFov" min="1" max="45" step="0.5">
+            <span class="val" id="val-aimFov"></span><span class="unit">°</span>
+          </div>
+        </div>
+        <div class="row">
+          <label for="aimBone">Aim bone</label>
+          <select id="aimBone">
+            <option value="0">Head</option>
+            <option value="1">Chest</option>
+          </select>
+        </div>
+      </div>
+
+      <h3 class="section-title">Movement</h3>
+      <div class="group">
+        <div class="row">
+          <label for="aimSmoothness">Smoothness</label>
+          <div class="ctl">
+            <input type="range" id="aimSmoothness" min="1" max="20" step="0.5">
+            <span class="val" id="val-aimSmoothness"></span>
+          </div>
+        </div>
+        <div class="row">
+          <label for="aimSmoothSteps">Sub-steps</label>
+          <div class="ctl">
+            <input type="range" id="aimSmoothSteps" min="1" max="20" step="1">
+            <span class="val" id="val-aimSmoothSteps"></span>
+          </div>
+        </div>
+        <div class="row">
+          <label for="aimPrediction">Lead prediction</label>
+          <input type="checkbox" id="aimPrediction" class="toggle">
+        </div>
+      </div>
+
+      <h3 class="section-title">Filters</h3>
+      <div class="group">
+        <div class="row">
+          <label for="aimOnlyVisible">Visible enemies only</label>
+          <input type="checkbox" id="aimOnlyVisible" class="toggle">
+        </div>
+        <div class="hint">
+          Requires <code>SoldierVisibility</code> sub-offsets. Until those are RE'd the gate is wired but always passes.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ESP Tab ── -->
+  <section class="tab-content" id="tab-esp">
+
+    <div class="hero">
+      <div class="hero-text">
+        <div class="hero-title">ESP Overlay</div>
+        <div class="hero-sub" id="hero-esp-sub">Off</div>
+      </div>
+      <input type="checkbox" id="espEnabled" class="toggle toggle-lg">
+    </div>
+
+    <div class="subgroup" data-master="espEnabled">
+      <h3 class="section-title">Hotkey</h3>
+      <div class="group">
+        <div class="row">
+          <label for="espHotkeyMode">Mode</label>
+          <select id="espHotkeyMode">
+            <option value="0">Off (always-on)</option>
+            <option value="1">Hold</option>
+            <option value="2">Toggle</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Bind</label>
+          <button class="btn hotkey-bind" data-feature="esp"
+                  data-vk-field="espHotkey">
+            <span class="hotkey-label">—</span>
+          </button>
+        </div>
+        <input type="hidden" id="espHotkey">
+      </div>
+
+      <h3 class="section-title">Render layers</h3>
+      <div class="group">
+        <div class="row"><label for="espBox">Boxes</label><input type="checkbox" id="espBox" class="toggle"></div>
+        <div class="row"><label for="espSkeleton">Skeleton</label><input type="checkbox" id="espSkeleton" class="toggle"></div>
+        <div class="row"><label for="espName">Name tags</label><input type="checkbox" id="espName" class="toggle"></div>
+        <div class="row"><label for="espWeapon">Weapon</label><input type="checkbox" id="espWeapon" class="toggle"></div>
+        <div class="row"><label for="espHealth">Health bars</label><input type="checkbox" id="espHealth" class="toggle"></div>
+        <div class="row"><label for="espSnaplines">Snaplines</label><input type="checkbox" id="espSnaplines" class="toggle"></div>
+      </div>
+
+      <h3 class="section-title">Filtering</h3>
+      <div class="group">
+        <div class="row">
+          <label for="espTeammates">Show teammates</label>
+          <input type="checkbox" id="espTeammates" class="toggle">
+        </div>
+        <div class="row">
+          <label for="espMaxDistance">Max distance</label>
+          <div class="ctl">
+            <input type="range" id="espMaxDistance" min="10" max="500" step="5">
+            <span class="val" id="val-espMaxDistance"></span><span class="unit">m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Anti-Recoil Tab ── -->
+  <section class="tab-content" id="tab-antirecoil">
+
+    <div class="hero">
+      <div class="hero-text">
+        <div class="hero-title">Anti-Recoil</div>
+        <div class="hero-sub" id="hero-recoil-sub">Off</div>
+      </div>
+      <input type="checkbox" id="antiRecoilEnabled" class="toggle toggle-lg">
+    </div>
+
+    <div class="subgroup" data-master="antiRecoilEnabled">
+      <h3 class="section-title">Hotkey</h3>
+      <div class="group">
+        <div class="row">
+          <label for="antiRecoilHotkeyMode">Mode</label>
+          <select id="antiRecoilHotkeyMode">
+            <option value="0">Off (always-on)</option>
+            <option value="1">Hold</option>
+            <option value="2">Toggle</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Bind</label>
+          <button class="btn hotkey-bind" data-feature="antiRecoil"
+                  data-vk-field="antiRecoilHotkey">
+            <span class="hotkey-label">—</span>
+          </button>
+        </div>
+        <input type="hidden" id="antiRecoilHotkey">
+      </div>
+
+      <h3 class="section-title">Compensation</h3>
+      <div class="group">
+        <div class="row">
+          <label for="antiRecoilStrength">Strength</label>
+          <div class="ctl">
+            <input type="range" id="antiRecoilStrength" min="0.0" max="2.0" step="0.05">
+            <span class="val" id="val-antiRecoilStrength"></span><span class="unit">x</span>
+          </div>
+        </div>
+        <div class="row">
+          <label for="antiRecoilResetMs">Reset delay</label>
+          <div class="ctl">
+            <input type="range" id="antiRecoilResetMs" min="100" max="1000" step="25">
+            <span class="val" id="val-antiRecoilResetMs"></span><span class="unit">ms</span>
+          </div>
+        </div>
+      </div>
+      <div class="hint">
+        Shot detection is read-only via ammo decrement. Pattern resets after firing stops for the reset delay. Weapon is auto-detected from game memory.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Misc Tab ── -->
+  <section class="tab-content" id="tab-misc">
+
+    <h3 class="section-title">Input device</h3>
+    <div class="group">
+      <div class="row">
+        <label for="inputDevice">Type</label>
+        <select id="inputDevice">
+          <option value="0">KMBox Net / B+</option>
+          <option value="1">Arduino</option>
+          <option value="2">Teensy</option>
+          <option value="3">MAKCU</option>
+          <option value="4">Ferrum</option>
+        </select>
+      </div>
+      <div class="row" id="row-kmboxIP">
+        <label for="kmboxIP">KMBox IP</label>
+        <input type="text" id="kmboxIP" class="text-input" placeholder="192.168.2.188">
+      </div>
+      <div class="row" id="row-kmboxPort">
+        <label for="kmboxPort">KMBox port</label>
+        <input type="number" id="kmboxPort" class="text-input" min="1" max="65535">
+      </div>
+      <div class="row" id="row-arduinoPort">
+        <label for="arduinoPort">COM port</label>
+        <input type="text" id="arduinoPort" class="text-input" placeholder="COM3">
+      </div>
+    </div>
+
+    <h3 class="section-title">Display</h3>
+    <div class="group">
+      <div class="row">
+        <label for="screenW">Screen width</label>
+        <input type="number" id="screenW" class="text-input" min="640">
+      </div>
+      <div class="row">
+        <label for="screenH">Screen height</label>
+        <input type="number" id="screenH" class="text-input" min="480">
+      </div>
+      <div class="row">
+        <label for="gameFov">Game FOV</label>
+        <input type="number" id="gameFov" class="text-input" min="50" max="120" step="1">
+      </div>
+      <div class="row">
+        <label for="mouseSensitivity">Mouse sens</label>
+        <input type="number" id="mouseSensitivity" class="text-input" min="0.001" max="1.0" step="0.001">
+      </div>
+      <div class="row">
+        <label for="fuserMode">Fuser mode</label>
+        <input type="checkbox" id="fuserMode" class="toggle">
+      </div>
+    </div>
+
+    <h3 class="section-title">Diagnostics</h3>
+    <div class="group">
+      <div class="row">
+        <label for="offsetAutoDiscover">Auto-discover offsets</label>
+        <input type="checkbox" id="offsetAutoDiscover" class="toggle">
+      </div>
+      <div class="hint">
+        If the static-VA chain fails validation at startup, run heuristic struct-walk discovery and print candidates to console. Adds ~50–200ms.<br>
+        For a one-shot dump, run <code>bf6_dma.exe --discover</code> from a terminal.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Configs Tab ── -->
+  <section class="tab-content" id="tab-configs">
+    <h3 class="section-title">Save current settings</h3>
+    <div class="group">
+      <div class="row">
+        <label for="configNameInput">Config name</label>
+        <input type="text" id="configNameInput" class="text-input" placeholder="my_config">
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="saveConfig()">Save</button>
+        <button class="btn btn-ghost" onclick="loadSelectedConfig()">Load selected</button>
+        <button class="btn btn-red" onclick="deleteSelectedConfig()">Delete selected</button>
+      </div>
+    </div>
+
+    <h3 class="section-title">Saved configs</h3>
+    <div class="group">
+      <div class="config-list" id="configList">
+        <div class="config-empty">No saved configs yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tests Tab ── -->
+  <section class="tab-content" id="tab-tests">
+
+    <h3 class="section-title">Connection</h3>
+    <div class="group">
+      <div class="row">
+        <label>DMA self-test</label>
+        <button class="btn" onclick="runDmaTest()" id="btn-dma">Run</button>
+      </div>
+      <div id="result-dma" class="test-result hidden"></div>
+    </div>
+    <div class="hint">
+      Runs the offset resolver, validates the gameCtx struct chain, and probes single-read + scatter-read latency. Read-only — safe to run anytime.
+    </div>
+
+    <h3 class="section-title">Aiming device</h3>
+    <div class="group">
+      <div class="row">
+        <label>Wiggle (left ↔ right)</label>
+        <button class="btn" onclick="runInputTest('wiggle')" id="btn-wiggle">Run</button>
+      </div>
+      <div class="row">
+        <label>Trace circle</label>
+        <button class="btn" onclick="runInputTest('circle')" id="btn-circle">Run</button>
+      </div>
+      <div class="row">
+        <label>Dry-fire recoil (5 kicks)</label>
+        <button class="btn" onclick="runInputTest('recoil')" id="btn-recoil">Run</button>
+      </div>
+      <div id="result-input" class="test-result hidden"></div>
+    </div>
+    <div class="hint">
+      Tests send small bounded mouse deltas through the configured input device. If the cursor doesn't visibly move on the gaming PC, the device isn't wired up correctly. Cursor returns near its starting position after each test.
+    </div>
+  </section>
+
+  <!-- ── Players Tab ── -->
+  <section class="tab-content" id="tab-players">
+    <h3 class="section-title">Live enemy list</h3>
+    <div class="group player-table-wrap">
+      <table class="player-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Weapon</th>
+            <th class="num">HP</th>
+            <th class="num">Team</th>
+          </tr>
+        </thead>
+        <tbody id="playerTableBody">
+          <tr><td colspan="4" class="empty">Waiting for game data…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="hint">Polls every second while this tab is open. Only enemies appear here; teammates are filtered out by the entity cache.</div>
+  </section>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

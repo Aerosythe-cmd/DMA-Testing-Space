@@ -1,0 +1,47 @@
+# Build output
+build/
+out/
+cmake-build-*/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+*.suo
+*.user
+*.sln
+
+# JetBrains / VS Code
+.idea/
+.vscode/
+
+# Third-party SDK — fetch separately, don't redistribute
+sdk/memprocfs/
+sdk/MemProcFS*/
+
+# Runtime user data
+configs/
+*.local.json
+
+# OS noise
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Logs / dumps
+*.log
+*.dmp

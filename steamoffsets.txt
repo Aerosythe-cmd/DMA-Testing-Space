@@ -1,0 +1,7 @@
+ClientSoldierEntity_TypeInfo : 0x9E5D580
+GlobalRegistryTypeInfo : 0x959FD08
+LocalPlayer: 0x37DB0D0
+UnknownIndex : 0x96EDD38
+GameContext: 0x149D14478
+GameRenderer: 0x149DA8DF0
+ClientSoldierAimingSimulation: 0x9BB1748
