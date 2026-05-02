@@ -76,7 +76,7 @@ DMA reads only. Output is via a separate USB HID device that the gaming PC sees 
 |---|---|
 | **Visual Studio 2022** with C++ toolchain | <https://visualstudio.microsoft.com> |
 | **CMake 3.20+** | <https://cmake.org/download/> |
-| **MemProcFS SDK** | <https://github.com/ufrisk/MemProcFS/releases> — drop `vmmdll.h` + `vmmdll.lib` into `./sdk/memprocfs/` |
+| **MemProcFS SDK** | <https://github.com/ufrisk/MemProcFS/releases> — see [MemProcFS setup](#memprocfs-setup) below |
 | **DMA card drivers / tools** | Vendor-specific (PCILeech for Screamer; specific tool for 75T; etc.) |
 
 The build pulls `nlohmann/json` and `cpp-httplib` automatically via CMake `FetchContent`.
@@ -85,17 +85,41 @@ The build pulls `nlohmann/json` and `cpp-httplib` automatically via CMake `Fetch
 
 ## Build
 
+### MemProcFS setup
+
+Download `MemProcFS_files_and_binaries-win_x64-latest.zip` from <https://github.com/ufrisk/MemProcFS/releases> and extract it somewhere (e.g. `C:\MemProcFS`).
+
+Modern releases ship the import library as **`vmm.lib`** (older ones called it `vmmdll.lib`). The CMake script accepts either, but you need to copy the files into the right place:
+
+**Build-time files** — into `./sdk/memprocfs/`:
+
+| File | Why |
+|---|---|
+| `vmmdll.h` | Header — included by `dma_handler.cpp` |
+| `vmm.lib` | Import lib — linked at build time (older releases: `vmmdll.lib`) |
+| `leechcore.h` *(optional)* | Only needed if you call leechcore APIs directly |
+| `leechcore.lib` *(optional)* | Same |
+
+**Runtime files** — must end up next to `bf6_dma.exe` at runtime: `vmm.dll`, `leechcore.dll`, `leechcore_driver.dll`, `FTD3XX.dll`, `FTD3XXWU.dll`, `dbghelp.dll`, `symsrv.dll`, `vcruntime140.dll`, `vmmyara.dll`, `tinylz4.dll`, `info.db`.
+
+You can have CMake copy them for you by passing the extracted folder as `MEMPROCFS_RUNTIME_DIR` at configure time (see below). Otherwise copy them by hand into `build/Release/` after the build.
+
+### Configure + build (Release)
+
 ```bat
 git clone <this-repo> bf6_dma
 cd bf6_dma
 
-REM 1. Drop the MemProcFS SDK files in
-copy <somewhere>\vmmdll.h sdk\memprocfs\
-copy <somewhere>\vmmdll.lib sdk\memprocfs\
+REM 1. Drop the build-time SDK files in
+copy C:\MemProcFS\vmmdll.h sdk\memprocfs\
+copy C:\MemProcFS\vmm.lib  sdk\memprocfs\
 
-REM 2. Configure + build (Release)
+REM 2. Configure (point at the MemProcFS extract for runtime DLL copy)
 mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022" -A x64
+cmake .. -G "Visual Studio 17 2022" -A x64 ^
+    -DMEMPROCFS_RUNTIME_DIR="C:/MemProcFS"
+
+REM 3. Build
 cmake --build . --config Release
 ```
 
@@ -104,9 +128,12 @@ Output:
 ```
 build/Release/
   bf6_dma.exe
-  web_menu/         ← static UI; served by built-in HTTP server
-  configs/          ← config storage (created at first run)
+  vmm.dll, leechcore.dll, info.db, ...   ← copied by CMake when MEMPROCFS_RUNTIME_DIR is set
+  web_menu/                              ← static UI; served by built-in HTTP server
+  configs/                               ← config storage (created at first run)
 ```
+
+If CMake says `MEMPROCFS_RUNTIME_DIR not set — you'll need to copy …`, just drop the runtime files in by hand after the build. The exe will refuse to start without `vmm.dll` next to it.
 
 ---
 

@@ -26,10 +26,27 @@ FetchContent_Declare(httplib
 FetchContent_MakeAvailable(httplib)
 
 # ── PCILeech / MemProcFS ──────────────────────────────────────
-# You need to provide the MemProcFS SDK manually:
-#   Place vmmdll.h + vmmdll.lib in ./sdk/memprocfs/
-# Download: https://github.com/ufrisk/MemProcFS/releases
+# You need to provide the MemProcFS SDK manually.
+# Download:  https://github.com/ufrisk/MemProcFS/releases
+#   → MemProcFS_files_and_binaries-win_x64-latest.zip
+#
+# 1. Build-time files (compile + link):
+#    Copy these into ./sdk/memprocfs/:
+#       vmmdll.h        (header)
+#       vmm.lib         (import lib for vmm.dll — older releases shipped
+#                        this as vmmdll.lib; modern ones ship vmm.lib)
+#       leechcore.h     (optional; only if you call leechcore directly)
+#       leechcore.lib   (optional; same)
+#
+# 2. Runtime files (copied next to the exe at build time):
+#    Set MEMPROCFS_RUNTIME_DIR to the extracted MemProcFS folder; the
+#    POST_BUILD step below copies vmm.dll, leechcore.dll, info.db, and
+#    related deps into $<TARGET_FILE_DIR>. Skipped (with a warning) if
+#    you don't set the variable — you can also copy by hand.
+#       cmake .. -DMEMPROCFS_RUNTIME_DIR="C:/path/to/MemProcFS_files..."
 set(MEMPROCFS_SDK "${CMAKE_SOURCE_DIR}/sdk/memprocfs")
+set(MEMPROCFS_RUNTIME_DIR "" CACHE PATH
+    "Path to the extracted MemProcFS_files_and_binaries folder (for runtime DLLs)")
 
 # ── Sources ───────────────────────────────────────────────────
 set(SOURCES
@@ -57,6 +74,18 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${MEMPROCFS_SDK}
 )
 
+# Pick whichever import-lib name is actually present in sdk/memprocfs/.
+# Modern MemProcFS releases ship vmm.lib; very old ones shipped vmmdll.lib.
+if(EXISTS "${MEMPROCFS_SDK}/vmm.lib")
+  set(MEMPROCFS_IMPORT_LIB "${MEMPROCFS_SDK}/vmm.lib")
+elseif(EXISTS "${MEMPROCFS_SDK}/vmmdll.lib")
+  set(MEMPROCFS_IMPORT_LIB "${MEMPROCFS_SDK}/vmmdll.lib")
+else()
+  message(FATAL_ERROR
+    "MemProcFS import lib not found. Drop vmm.lib (or vmmdll.lib) into "
+    "${MEMPROCFS_SDK}. See top-of-file comment for download link.")
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
   nlohmann_json::nlohmann_json
   httplib::httplib
@@ -64,7 +93,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   dxgi
   d3dcompiler
   ws2_32
-  ${MEMPROCFS_SDK}/vmmdll.lib
+  ${MEMPROCFS_IMPORT_LIB}
 )
 
 # ── Compiler flags ────────────────────────────────────────────
@@ -89,5 +118,33 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     "$<TARGET_FILE_DIR:${PROJECT_NAME}>/configs"
 )
 
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+# ── Copy MemProcFS runtime files next to the exe ──────────────
+# These DLLs and info.db must be in the same directory as bf6_dma.exe
+# at runtime. If you set -DMEMPROCFS_RUNTIME_DIR, CMake handles it for
+# you; otherwise copy them in manually.
+if(MEMPROCFS_RUNTIME_DIR AND EXISTS "${MEMPROCFS_RUNTIME_DIR}/vmm.dll")
+  set(MEMPROCFS_RUNTIME_FILES
+    vmm.dll leechcore.dll leechcore_driver.dll
+    FTD3XX.dll FTD3XXWU.dll
+    dbghelp.dll symsrv.dll vcruntime140.dll
+    vmmyara.dll tinylz4.dll
+    info.db
+  )
+  foreach(F ${MEMPROCFS_RUNTIME_FILES})
+    if(EXISTS "${MEMPROCFS_RUNTIME_DIR}/${F}")
+      add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          "${MEMPROCFS_RUNTIME_DIR}/${F}"
+          "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${F}"
+      )
+    endif()
+  endforeach()
+  message(STATUS "MemProcFS runtime: ${MEMPROCFS_RUNTIME_DIR} (will be copied)")
+else()
+  message(WARNING
+    "MEMPROCFS_RUNTIME_DIR not set — you'll need to copy vmm.dll, "
+    "leechcore.dll, info.db, etc. next to bf6_dma.exe by hand.")
+endif()
+
+message(STATUS "Build type:   ${CMAKE_BUILD_TYPE}")
 message(STATUS "MemProcFS SDK: ${MEMPROCFS_SDK}")
