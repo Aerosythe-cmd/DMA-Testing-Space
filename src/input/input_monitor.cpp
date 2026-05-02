@@ -148,6 +148,7 @@ bool InputMonitor::Start(const std::string& kmboxIp, uint16_t kmboxPort) {
         std::cerr << "[InputMon] WSAStartup failed.\n";
         return false;
     }
+    m_wsaStarted = true;
 
     auto* sock = new SOCKET(socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP));
     if (*sock == INVALID_SOCKET) {
@@ -176,19 +177,32 @@ bool InputMonitor::Start(const std::string& kmboxIp, uint16_t kmboxPort) {
 void InputMonitor::Stop() {
     if (!m_running.exchange(false)) return;
 
-    if (m_sock) {
+    // Step 1: best-effort "monitor off" while the socket is still alive.
+    if (m_sock && m_addr) {
         auto* s = static_cast<SOCKET*>(m_sock);
-        // Best-effort "monitor off" so the kmbox stops spamming us
-        if (m_addr) {
-            KMBoxEnvelope env{};
-            env.head = KMBOX_HEAD;
-            env.cmd  = CMD_MONITOR_OFF;
-            env.crc32 = CRC32(&env, sizeof(env) - sizeof(uint32_t));
-            sendto(*s, reinterpret_cast<char*>(&env), sizeof(env), 0,
-                   static_cast<sockaddr*>(m_addr), sizeof(sockaddr_in));
-        }
-        closesocket(*s);
-        delete s;
+        KMBoxEnvelope env{};
+        env.head  = KMBOX_HEAD;
+        env.cmd   = CMD_MONITOR_OFF;
+        env.crc32 = CRC32(&env, sizeof(env) - sizeof(uint32_t));
+        sendto(*s, reinterpret_cast<char*>(&env), sizeof(env), 0,
+               static_cast<sockaddr*>(m_addr), sizeof(sockaddr_in));
+    }
+
+    // Step 2: close the socket — this unblocks any in-flight recvfrom().
+    // The thread loop checks m_running each iteration and will exit.
+    if (m_sock) {
+        closesocket(*static_cast<SOCKET*>(m_sock));
+    }
+
+    // Step 3: ONLY NOW is it safe to join the thread (its socket pointer
+    // is dead, so no further recvfrom can succeed; the recv timeout
+    // ensures we exit promptly even if it was mid-call).
+    if (m_thread.joinable()) m_thread.join();
+
+    // Step 4: free the socket / addr storage. Doing this before join()
+    // would be a use-after-free — the thread holds raw pointers to both.
+    if (m_sock) {
+        delete static_cast<SOCKET*>(m_sock);
         m_sock = nullptr;
     }
     if (m_addr) {
@@ -196,8 +210,13 @@ void InputMonitor::Stop() {
         m_addr = nullptr;
     }
 
-    if (m_thread.joinable()) m_thread.join();
-    WSACleanup();
+    // Only cleanup winsock if WE started it — cpp-httplib also calls
+    // WSAStartup, and an unconditional WSACleanup here drops the global
+    // ref count for everyone, breaking the web server during shutdown.
+    if (m_wsaStarted) {
+        WSACleanup();
+        m_wsaStarted = false;
+    }
     m_kmConnected = false;
 }
 
@@ -266,7 +285,10 @@ void InputMonitor::ParseMonitorPacket(const uint8_t* data, int len) {
     if (len < static_cast<int>(sizeof(KMBoxEnvelope))) return;
 
     auto* env = reinterpret_cast<const KMBoxEnvelope*>(data);
-    if (env->head != KMBOX_HEAD) return;
+    // Some firmware revisions stamp the header as 0xAAAAAA (24-bit, what
+    // outgoing commands use), others as 0xAAAAAAAA (full 32-bit). Mask
+    // off the high byte so we accept either shape.
+    if ((env->head & 0x00FFFFFFu) != KMBOX_HEAD) return;
     // Don't bother CRC-checking inbound — kmbox firmware sometimes
     // skips it on monitor packets to save cycles. Header magic is enough.
 
@@ -333,15 +355,6 @@ bool InputMonitor::IsKeyDown(int vk) const {
     return m_kmKeys[vk] != 0;
 }
 
-bool InputMonitor::WasKeyPressed(int vk) {
-    if (vk <= 0 || vk >= 256) return false;
-    bool now = IsKeyDown(vk);
-    std::lock_guard<std::mutex> lock(m_edgeMtx);
-    bool was = m_edgePrev[vk] != 0;
-    m_edgePrev[vk] = now ? 1 : 0;
-    return now && !was;
-}
-
 // ─────────────────────────────────────────────────────────────
 //  Bind capture (web menu "press a key" UX)
 // ─────────────────────────────────────────────────────────────
@@ -349,6 +362,13 @@ bool InputMonitor::WasKeyPressed(int vk) {
 void InputMonitor::BeginCapture() {
     std::lock_guard<std::mutex> lock(m_capMtx);
     m_capVk = 0;
+    // Snapshot keys currently held on the attack-PC side so the user
+    // can click "Bind" while Shift/Ctrl is held without instant capture.
+    // The kmbox path uses its own edge detection in ParseMonitorPacket,
+    // so this baseline only affects the Win32 fallback below.
+    for (int vk = 1; vk < 256; vk++) {
+        m_capWin32Baseline[vk] = (GetAsyncKeyState(vk) & 0x8000) ? 1 : 0;
+    }
     m_capturing = true;
 }
 
@@ -357,14 +377,15 @@ int InputMonitor::CapturedKey() {
     if (!m_capturing.load()) return 0;
     if (m_capVk != 0)        return m_capVk;   // already captured via kmbox
 
-    // Win32 fallback so the binder works even when no kmbox is attached.
-    // Skip mouse buttons here — those are noisy on a menu device (any
-    // click captures). The kmbox monitor path catches game-PC mouse
-    // buttons via ParseMonitorPacket without this restriction.
+    // Win32 fallback. Skip mouse buttons (any click captures otherwise);
+    // kmbox path catches game-PC mouse buttons via ParseMonitorPacket.
+    // Only fresh up→down edges past the BeginCapture() baseline count.
     for (int vk = 1; vk < 256; vk++) {
         if (vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON ||
             vk == VK_XBUTTON1 || vk == VK_XBUTTON2) continue;
-        if (GetAsyncKeyState(vk) & 0x8000) {
+        bool down = (GetAsyncKeyState(vk) & 0x8000) != 0;
+        if (!down) m_capWin32Baseline[vk] = 0;   // reset on release
+        if (down && !m_capWin32Baseline[vk]) {
             m_capVk = vk;
             break;
         }

@@ -145,7 +145,10 @@ void Aimbot::Tick(const std::vector<Entity>& entities,
     }
 
     AimAngles delta  = CalcAngleDelta(camPos, camAngles, aimPos);
-    AimAngles smooth = Smooth(delta, 1.f / cfg.aimSmoothness);
+    // Clamp aimSmoothness ≥ 1 so a hand-edited 0 in the JSON config
+    // can't produce a divide-by-zero / inf mouse delta.
+    float smoothness = (cfg.aimSmoothness < 1.f) ? 1.f : cfg.aimSmoothness;
+    AimAngles smooth = Smooth(delta, 1.f / smoothness);
 
     // Convert angle delta → mouse counts
     // pixelPerDeg is screen-space; mouseSensitivity is the per-game scale (tunable)

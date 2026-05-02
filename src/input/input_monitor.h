@@ -41,11 +41,8 @@ public:
     bool Start(const std::string& kmboxIp, uint16_t kmboxPort);
     void Stop();
 
-    // Thread-safe queries. vk = Win32 virtual-key code.
-    // Edge: returns true on the frame the key transitions up→down.
-    // Down: returns true while the key is held.
+    // Thread-safe query: vk = Win32 virtual-key code.
     bool IsKeyDown(int vk) const;
-    bool WasKeyPressed(int vk);   // consumes edge — call once per frame max
 
     // ── Bind capture ─────────────────────────────────────────
     // Returns the most recently pressed key since BeginCapture().
@@ -83,14 +80,18 @@ private:
     mutable std::mutex m_kmMtx;
     std::array<uint8_t, 256> m_kmKeys{};   // 1 = down
 
-    // Edge-detection state for WasKeyPressed (per-VK previous frame).
-    mutable std::mutex m_edgeMtx;
-    std::array<uint8_t, 256> m_edgePrev{};
-
     // Bind-capture: vk of first keypress since BeginCapture()
     mutable std::mutex m_capMtx;
     std::atomic<bool>  m_capturing{false};
     int                m_capVk = 0;
+    // Win32 keys held at BeginCapture() — only fresh up→down edges past
+    // this baseline count, so clicking "Bind" while Shift is held doesn't
+    // instantly capture Shift.
+    std::array<uint8_t, 256> m_capWin32Baseline{};
+
+    // Track whether *we* called WSAStartup so Stop() pairs cleanly without
+    // dropping ref counts that cpp-httplib (or anyone else) owns.
+    bool m_wsaStarted = false;
 
     // Socket lives here so Stop() can shut it down cleanly
     // (declared as void* to keep winsock out of the header)

@@ -1,7 +1,6 @@
 #include "web_server.h"
 #include "../diagnostics.h"
 #include "../input/input_monitor.h"
-#include "../input/hotkey_manager.h"
 
 #include <fstream>
 #include <filesystem>
@@ -219,20 +218,6 @@ void WebServer::SetupRoutes() {
     m_server.Post("/api/input/bind/cancel", [](const httplib::Request&, httplib::Response& res) {
         InputMonitor::Get().CancelCapture();
         res.set_content(R"({"ok":true})", "application/json");
-    });
-
-    // ── Hotkey live state (for UI badges) ─────────────────────
-    m_server.Get("/api/hotkeys/state", [](const httplib::Request&, httplib::Response& res) {
-        auto& hm = HotkeyManager::Get();
-        json j = {
-            {"aimbotActive",     hm.IsActive(Feature::Aimbot)},
-            {"espActive",        hm.IsActive(Feature::ESP)},
-            {"antiRecoilActive", hm.IsActive(Feature::AntiRecoil)},
-            {"aimbotToggle",     hm.ToggleState(Feature::Aimbot)},
-            {"espToggle",        hm.ToggleState(Feature::ESP)},
-            {"antiRecoilToggle", hm.ToggleState(Feature::AntiRecoil)},
-        };
-        res.set_content(j.dump(), "application/json");
     });
 
     // ── Cloud configs: delete ─────────────────────────────────

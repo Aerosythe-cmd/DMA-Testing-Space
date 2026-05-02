@@ -7,52 +7,60 @@ using json = nlohmann::json;
 void Config::LoadFromJson(const json& j) {
     std::lock_guard<std::mutex> lock(mtx);
 
+    // Per-field load that swallows type-mismatch errors silently. A
+    // hand-edited config that has e.g. "aimFov": "8" (string instead of
+    // number) will keep the existing default for that one field rather
+    // than aborting the whole load with a half-populated state.
+    auto get = [&j](const char* key, auto& dest) {
+        try { if (j.contains(key)) dest = j[key]; } catch (...) {}
+    };
+
     // Aimbot
-    if (j.contains("aimbotEnabled"))    aimbotEnabled    = j["aimbotEnabled"];
-    if (j.contains("aimbotHotkey"))     aimbotHotkey     = j["aimbotHotkey"];
-    if (j.contains("aimbotHotkeyMode")) aimbotHotkeyMode = j["aimbotHotkeyMode"];
-    if (j.contains("aimFov"))          aimFov          = j["aimFov"];
-    if (j.contains("gameFov"))         gameFov         = j["gameFov"];
-    if (j.contains("aimSmoothness"))   aimSmoothness   = j["aimSmoothness"];
-    if (j.contains("aimSmoothSteps"))  aimSmoothSteps  = j["aimSmoothSteps"];
-    if (j.contains("aimBone"))         aimBone         = j["aimBone"];
-    if (j.contains("aimPrediction"))   aimPrediction   = j["aimPrediction"];
-    if (j.contains("aimOnlyVisible"))  aimOnlyVisible  = j["aimOnlyVisible"];
-    if (j.contains("mouseSensitivity")) mouseSensitivity = j["mouseSensitivity"];
+    get("aimbotEnabled",    aimbotEnabled);
+    get("aimbotHotkey",     aimbotHotkey);
+    get("aimbotHotkeyMode", aimbotHotkeyMode);
+    get("aimFov",           aimFov);
+    get("gameFov",          gameFov);
+    get("aimSmoothness",    aimSmoothness);
+    get("aimSmoothSteps",   aimSmoothSteps);
+    get("aimBone",          aimBone);
+    get("aimPrediction",    aimPrediction);
+    get("aimOnlyVisible",   aimOnlyVisible);
+    get("mouseSensitivity", mouseSensitivity);
 
     // ESP
-    if (j.contains("espEnabled"))     espEnabled     = j["espEnabled"];
-    if (j.contains("espHotkey"))      espHotkey      = j["espHotkey"];
-    if (j.contains("espHotkeyMode"))  espHotkeyMode  = j["espHotkeyMode"];
-    if (j.contains("espBox"))         espBox         = j["espBox"];
-    if (j.contains("espSkeleton"))    espSkeleton    = j["espSkeleton"];
-    if (j.contains("espName"))        espName        = j["espName"];
-    if (j.contains("espWeapon"))      espWeapon      = j["espWeapon"];
-    if (j.contains("espHealth"))      espHealth      = j["espHealth"];
-    if (j.contains("espSnaplines"))   espSnaplines   = j["espSnaplines"];
-    if (j.contains("espTeammates"))   espTeammates   = j["espTeammates"];
-    if (j.contains("espMaxDistance")) espMaxDistance = j["espMaxDistance"];
+    get("espEnabled",     espEnabled);
+    get("espHotkey",      espHotkey);
+    get("espHotkeyMode",  espHotkeyMode);
+    get("espBox",         espBox);
+    get("espSkeleton",    espSkeleton);
+    get("espName",        espName);
+    get("espWeapon",      espWeapon);
+    get("espHealth",      espHealth);
+    get("espSnaplines",   espSnaplines);
+    get("espTeammates",   espTeammates);
+    get("espMaxDistance", espMaxDistance);
 
     // Display
-    if (j.contains("screenW"))        screenW        = j["screenW"];
-    if (j.contains("screenH"))        screenH        = j["screenH"];
-    if (j.contains("fuserMode"))      fuserMode      = j["fuserMode"];
+    get("screenW",   screenW);
+    get("screenH",   screenH);
+    get("fuserMode", fuserMode);
 
     // Input
-    if (j.contains("inputDevice"))    inputDevice    = j["inputDevice"];
-    if (j.contains("kmboxIP"))        kmboxIP        = j["kmboxIP"];
-    if (j.contains("kmboxPort"))      kmboxPort      = j["kmboxPort"];
-    if (j.contains("arduinoPort"))    arduinoPort    = j["arduinoPort"];
+    get("inputDevice", inputDevice);
+    get("kmboxIP",     kmboxIP);
+    get("kmboxPort",   kmboxPort);
+    get("arduinoPort", arduinoPort);
 
-    if (j.contains("antiRecoilEnabled"))    antiRecoilEnabled    = j["antiRecoilEnabled"];
-    if (j.contains("antiRecoilHotkey"))     antiRecoilHotkey     = j["antiRecoilHotkey"];
-    if (j.contains("antiRecoilHotkeyMode")) antiRecoilHotkeyMode = j["antiRecoilHotkeyMode"];
-    if (j.contains("antiRecoilStrength"))   antiRecoilStrength   = j["antiRecoilStrength"];
-    if (j.contains("antiRecoilResetMs"))    antiRecoilResetMs    = j["antiRecoilResetMs"];
+    // Anti-recoil
+    get("antiRecoilEnabled",    antiRecoilEnabled);
+    get("antiRecoilHotkey",     antiRecoilHotkey);
+    get("antiRecoilHotkeyMode", antiRecoilHotkeyMode);
+    get("antiRecoilStrength",   antiRecoilStrength);
+    get("antiRecoilResetMs",    antiRecoilResetMs);
 
-    if (j.contains("offsetAutoDiscover")) offsetAutoDiscover = j["offsetAutoDiscover"];
-
-    if (j.contains("configName"))     configName     = j["configName"];
+    get("offsetAutoDiscover", offsetAutoDiscover);
+    get("configName",         configName);
 }
 
 json Config::ToJson() const {

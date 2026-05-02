@@ -57,6 +57,13 @@ void HotkeyManager::Tick() {
                 m_active[i]   = m_toggled[i];
                 break;
             }
+            default: {
+                // Out-of-range mode value (e.g. corrupt config) — treat
+                // as Off so a feature with a garbage hotkey config still
+                // behaves sanely as long as its master toggle is on.
+                m_active[i] = true;
+                break;
+            }
         }
     }
 }
