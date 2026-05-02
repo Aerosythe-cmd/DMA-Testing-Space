@@ -96,11 +96,22 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   ${MEMPROCFS_IMPORT_LIB}
 )
 
+# ── Windows-specific defines (apply before any windows.h include) ──
+# NOMINMAX           — stop windows.h defining min/max macros, which
+#                      otherwise collide with std::min / std::max.
+# WIN32_LEAN_AND_MEAN — stop windows.h auto-including legacy winsock1,
+#                      so cpp-httplib's <winsock2.h> use compiles.
+# _CRT_SECURE_NO_WARNINGS — silence sprintf-class deprecation noise.
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+  NOMINMAX
+  WIN32_LEAN_AND_MEAN
+  _CRT_SECURE_NO_WARNINGS
+)
+
 # ── Compiler flags ────────────────────────────────────────────
 if(MSVC)
   target_compile_options(${PROJECT_NAME} PRIVATE
     /O2 /W3 /MP
-    /D_CRT_SECURE_NO_WARNINGS
   )
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE -O2 -Wall)

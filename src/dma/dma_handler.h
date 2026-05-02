@@ -1,5 +1,9 @@
 #pragma once
 #include <Windows.h>
+// Windows SDK 10.0.26100+ moved NTSTATUS out of winnt.h into shared/ntdef.h,
+// so <Windows.h> no longer pulls it in transitively. vmmdll.h uses NTSTATUS
+// as a return type, so we include the public header that defines it.
+#include <winternl.h>
 #include <cstdint>
 #include <string>
 #include <vector>

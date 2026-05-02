@@ -63,7 +63,7 @@ struct KMBoxEnvelope {
     uint32_t crc32;
 };
 #pragma pack(pop)
-static_assert(sizeof(KMBoxEnvelope) == 132, "envelope size mismatch");
+static_assert(sizeof(KMBoxEnvelope) == 136, "envelope size mismatch");
 
 uint32_t CRC32(const void* data, size_t len) {
     static uint32_t table[256];

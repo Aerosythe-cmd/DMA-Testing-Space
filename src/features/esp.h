@@ -3,6 +3,7 @@
 #include "../game/offsets.h"
 #include "../config/config.h"
 #include <d3d11.h>
+#include <dxgi1_2.h>     // IDXGISwapChain1 — newer Windows SDKs don't pull this in via d3d11.h
 #include <d2d1_1.h>
 #include <dwrite.h>
 #include <wrl/client.h>
