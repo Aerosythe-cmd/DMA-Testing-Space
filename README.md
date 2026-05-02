@@ -72,68 +72,154 @@ DMA reads only. Output is via a separate USB HID device that the gaming PC sees 
 
 ### Software
 
-| Item | Where to get it |
-|---|---|
-| **Visual Studio 2022** with C++ toolchain | <https://visualstudio.microsoft.com> |
-| **CMake 3.20+** | <https://cmake.org/download/> |
-| **MemProcFS SDK** | <https://github.com/ufrisk/MemProcFS/releases> — see [MemProcFS setup](#memprocfs-setup) below |
-| **DMA card drivers / tools** | Vendor-specific (PCILeech for Screamer; specific tool for 75T; etc.) |
+You need **a C++ compiler**, **CMake**, and the **MemProcFS SDK**. Pick whichever Visual Studio Build Tools generation matches what you can install — the project compiles cleanly on either.
 
-The build pulls `nlohmann/json` and `cpp-httplib` automatically via CMake `FetchContent`.
+| Item | Where to get it | Notes |
+|---|---|---|
+| **Build Tools for Visual Studio 2026** *(recommended)* | <https://aka.ms/vs/18/release/vs_BuildTools.exe> | Compiler-only (~2 GB). Bundles the CMake "Visual Studio 18 2026" generator. **The project was developed and tested against this.** |
+| *or* **Build Tools for Visual Studio 2022** | <https://aka.ms/vs/17/release/vs_BuildTools.exe> | Older but still works. Use the "Visual Studio 17 2022" generator below. |
+| **CMake 3.20+** | <https://cmake.org/download/> | Only needed if your Build Tools install didn't include it (the workload normally does). |
+| **MemProcFS SDK** | <https://github.com/ufrisk/MemProcFS/releases> | See [MemProcFS setup](#1-memprocfs-setup) below |
+| **DMA card drivers / tools** | Vendor-specific | PCILeech for Screamer; vendor tool for 75T; etc. |
+
+> **VS Code is an editor, not a compiler.** It does not replace the Build Tools. Installing only CMake, or only VS Code, will fail with "compiler not found" or "could not find any instance of Visual Studio".
+
+When you run the Build Tools installer, check the **"Desktop development with C++"** workload — that brings the MSVC compiler, Windows 11 SDK, MSBuild, and (for VS 2026) bundled CMake. Don't deselect any of the auto-checked sub-components.
+
+The build pulls `nlohmann/json` and `cpp-httplib` automatically via CMake `FetchContent` on the first configure (~30 s, one-time).
 
 ---
 
 ## Build
 
-### MemProcFS setup
+End-to-end, the build has four steps:
 
-Download `MemProcFS_files_and_binaries-win_x64-latest.zip` from <https://github.com/ufrisk/MemProcFS/releases> and extract it somewhere (e.g. `C:\MemProcFS`).
+1. **MemProcFS setup** — drop the SDK files into the project tree.
+2. **Open the right shell** — the Developer Command Prompt for VS, so `cmake` / `cl.exe` / `msbuild` are on the PATH.
+3. **Configure** — `cmake` reads `CMakeLists.txt` and generates a Visual Studio solution under `build/`.
+4. **Compile** — `cmake --build` invokes MSBuild on the solution and produces `bf6_dma.exe`.
 
-Modern releases ship the import library as **`vmm.lib`** (older ones called it `vmmdll.lib`). The CMake script accepts either, but you need to copy the files into the right place:
+### 1. MemProcFS setup
 
-**Build-time files** — into `./sdk/memprocfs/`:
+Grab `MemProcFS_files_and_binaries-win_x64-latest.zip` from the [MemProcFS releases](https://github.com/ufrisk/MemProcFS/releases) page and extract it to a stable location (e.g. `C:\MemProcFS`). You'll reference this path twice — once when copying the build-time files into the project, and once when telling CMake where to grab the runtime DLLs.
+
+Modern releases ship the import library as **`vmm.lib`** (older ones called it `vmmdll.lib`). The CMake script auto-detects either, but the files have to land in the right place.
+
+**Build-time files** — copy these into `./sdk/memprocfs/` inside the cloned repo:
 
 | File | Why |
 |---|---|
-| `vmmdll.h` | Header — included by `dma_handler.cpp` |
-| `vmm.lib` | Import lib — linked at build time (older releases: `vmmdll.lib`) |
+| `vmmdll.h` | Header — included by `dma_handler.cpp`, defines the MemProcFS API |
+| `vmm.lib` | Import library — linked at build time (older releases: `vmmdll.lib`) |
 | `leechcore.h` *(optional)* | Only needed if you call leechcore APIs directly |
 | `leechcore.lib` *(optional)* | Same |
 
-**Runtime files** — must end up next to `bf6_dma.exe` at runtime: `vmm.dll`, `leechcore.dll`, `leechcore_driver.dll`, `FTD3XX.dll`, `FTD3XXWU.dll`, `dbghelp.dll`, `symsrv.dll`, `vcruntime140.dll`, `vmmyara.dll`, `tinylz4.dll`, `info.db`.
+If the import lib is missing, the configure step will abort with a clear error pointing here.
 
-You can have CMake copy them for you by passing the extracted folder as `MEMPROCFS_RUNTIME_DIR` at configure time (see below). Otherwise copy them by hand into `build/Release/` after the build.
+**Runtime files** — these must sit next to `bf6_dma.exe` whenever it runs: `vmm.dll`, `leechcore.dll`, `leechcore_driver.dll`, `FTD3XX.dll`, `FTD3XXWU.dll`, `dbghelp.dll`, `symsrv.dll`, `vcruntime140.dll`, `vmmyara.dll`, `tinylz4.dll`, `info.db`. The exe refuses to start without at least `vmm.dll` resolvable.
 
-### Configure + build (Release)
+You can have CMake copy them for you automatically every time you build by passing the MemProcFS extract folder as `-DMEMPROCFS_RUNTIME_DIR=...` (shown below). Skip this and you'll have to copy them in by hand each time.
+
+### 2. Open the Developer Command Prompt
+
+After the Build Tools install, look in the Start menu for **"Developer Command Prompt for VS 2026"** (or "for VS 2022" if that's what you installed). Open it.
+
+This shell is special: it pre-populates the PATH so `cmake`, `cl.exe`, `msbuild`, and `lib.exe` are all reachable. A regular `cmd` window will fail with "command not found" because the MSVC toolchain isn't on the system PATH by design.
+
+> If you want to drive the build from VS Code's integrated terminal instead, install the **CMake Tools** + **C/C++** extensions and they'll detect the Build Tools automatically. Otherwise stick with the Developer Command Prompt.
+
+### 3. Configure
+
+This step reads `CMakeLists.txt`, downloads `nlohmann/json` and `cpp-httplib` via `FetchContent` (first run only), checks that the MSVC toolchain works, and generates `build/bf6_dma.sln`.
+
+#### Option A — Build Tools 2026 (recommended)
 
 ```bat
-git clone <this-repo> bf6_dma
+git clone https://github.com/Aerosythe-cmd/DMA-Testing-Space.git bf6_dma
 cd bf6_dma
 
-REM 1. Drop the build-time SDK files in
+REM Drop the build-time SDK files in
 copy C:\MemProcFS\vmmdll.h sdk\memprocfs\
 copy C:\MemProcFS\vmm.lib  sdk\memprocfs\
 
-REM 2. Configure (point at the MemProcFS extract for runtime DLL copy)
+REM Configure
 mkdir build && cd build
+cmake .. -G "Visual Studio 18 2026" -A x64 ^
+    -DMEMPROCFS_RUNTIME_DIR="C:/MemProcFS"
+```
+
+#### Option B — Build Tools 2022
+
+Same as above, but swap the generator flag:
+
+```bat
 cmake .. -G "Visual Studio 17 2022" -A x64 ^
     -DMEMPROCFS_RUNTIME_DIR="C:/MemProcFS"
+```
 
-REM 3. Build
+#### What you should see
+
+A successful configure ends with something like:
+
+```
+-- The CXX compiler identification is MSVC 19.50.xxxxx.0
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.22631.
+-- MemProcFS runtime: C:/MemProcFS (will be copied)
+-- Build type:   Release
+-- MemProcFS SDK: <repo>/sdk/memprocfs
+-- Configuring done
+-- Generating done
+-- Build files have been written to: <repo>/build
+```
+
+Common configure failures:
+
+| Error | Cause | Fix |
+|---|---|---|
+| `could not find any instance of Visual Studio` | Build Tools not installed, or wrong generator name | Install Build Tools; check generator matches your VS version |
+| `MemProcFS import lib not found` | `vmm.lib` (or `vmmdll.lib`) not in `sdk/memprocfs/` | Copy the file in; re-run configure |
+| `Could NOT find Threads` | Should never happen on Windows | Reinstall the Windows SDK component of the Build Tools |
+
+### 4. Compile
+
+```bat
 cmake --build . --config Release
 ```
 
-Output:
+This invokes MSBuild on the generated solution. Takes 30–90 s on a first build (~10 s after that, since cpp-httplib is the slow part and gets cached). You'll see one warning per file about LF→CRLF — ignore it; that's a git checkout artifact, not a code issue.
+
+When it finishes, `build\Release\` contains:
 
 ```
-build/Release/
-  bf6_dma.exe
+build\Release\
+  bf6_dma.exe                            ← the cheat
   vmm.dll, leechcore.dll, info.db, ...   ← copied by CMake when MEMPROCFS_RUNTIME_DIR is set
-  web_menu/                              ← static UI; served by built-in HTTP server
-  configs/                               ← config storage (created at first run)
+  web_menu\                              ← static UI; served by built-in HTTP server
+  configs\                               ← config storage (created at first run)
 ```
 
-If CMake says `MEMPROCFS_RUNTIME_DIR not set — you'll need to copy …`, just drop the runtime files in by hand after the build. The exe will refuse to start without `vmm.dll` next to it.
+If CMake printed `MEMPROCFS_RUNTIME_DIR not set — you'll need to copy …`, copy the runtime DLLs and `info.db` from your MemProcFS extract into `build\Release\` by hand. The exe will refuse to start without them — you'll see `MemProcFS init failed` at startup.
+
+### 5. Smoke test (no DMA card needed)
+
+You can sanity-check the build before connecting any hardware. From the Developer Command Prompt:
+
+```bat
+cd build\Release
+bf6_dma.exe
+```
+
+Without a DMA card you'll see the banner, then:
+
+```
+[*] Initializing DMA...
+[DMA] MemProcFS init failed. Check FPGA connection.
+[!] DMA init failed.
+```
+
+That's the **correct** "no hardware" output — it means the build is healthy and the binary is wired up. The next real test is connecting the FPGA and running it again.
+
+> **Why double-clicking the exe seems to "do nothing"**: the process starts, prints the DMA error, then `return 1`s — and Windows tears down the console window the instant the process exits. Always launch from a terminal so you can read the output.
 
 ---
 
