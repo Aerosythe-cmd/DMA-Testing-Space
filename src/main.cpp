@@ -57,6 +57,11 @@ static std::string BuildPlayerJson(const std::vector<Entity>& entities) {
 int main(int argc, char* argv[]) {
     SetConsoleCtrlHandler(ConsoleHandler, TRUE);
 
+    // Make the console interpret our output as UTF-8 so the banner's
+    // Unicode block characters render correctly in plain cmd.exe (which
+    // otherwise defaults to OEM code page 437/850 and shows garbage).
+    SetConsoleOutputCP(CP_UTF8);
+
     // ── CLI flag: --discover ─────────────────────────────────
     // Runs the offset-discovery tool and exits. Use after a game
     // patch breaks the static VAs to get a fresh map for offsets.h.
